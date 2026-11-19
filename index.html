@@ -1,210 +1,545 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuzinho hj?</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-MONITOR | Supervisório Remoto (MQTT WSS)</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0c1017;
+      --bg-card: #141b26;
+      --bg-card-alt: #1a2332;
+      --border: #263247;
+      --text-main: #e6edf7;
+      --text-muted: #93a4bc;
+      --ok: #16a34a;
+      --ok-bg: rgba(22, 163, 74, 0.14);
+      --fail: #dc2626;
+      --fail-bg: rgba(220, 38, 38, 0.16);
+      --warn: #d97706;
+      --warn-bg: rgba(217, 119, 6, 0.16);
+      --accent: #38bdf8;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            /* Fundo degradê vermelho e preto simulando movimento de ondas */
-            background: linear-gradient(45deg, #050000, #1a0003, #4a0007, #1a0003, #050000);
-            background-size: 400% 400%;
-            animation: waveGradient 12s ease infinite;
-            overflow: hidden;
-            font-family: 'Poppins', sans-serif;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-        /* Animação do fundo em ondas */
-        @keyframes waveGradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
+    .container {
+      max-width: 1020px;
+      margin: 0 auto;
+    }
 
-        .container {
-            text-align: center;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 40px 60px;
-            border-radius: 20px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(255, 77, 109, 0.1);
-            z-index: 10;
-        }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+    }
 
-        /* Título romântico e pulsante */
-        .title {
-            font-family: 'Dancing Script', cursive;
-            font-size: 3.5rem;
-            color: #ff4d6d;
-            margin: 0 0 40px 0;
-            text-shadow: 0 0 10px rgba(255, 77, 109, 0.5), 0 0 20px rgba(255, 77, 109, 0.3);
-            animation: pulseText 2s ease-in-out infinite alternate;
-        }
+    .brand h1 { font-size: 1.35rem; letter-spacing: 0.04em; }
+    .brand p { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
 
-        @keyframes pulseText {
-            0% { transform: scale(1); text-shadow: 0 0 10px rgba(255, 77, 109, 0.5); }
-            100% { transform: scale(1.03); text-shadow: 0 0 25px rgba(255, 77, 109, 0.8), 0 0 10px #ff0000; }
-        }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
 
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            min-height: 60px;
-            align-items: center;
-        }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+    }
 
-        /* Estilização dos Botões com volume 3D */
-        .btn {
-            padding: 15px 35px;
-            font-size: 18px;
-            font-weight: 600;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: 'Poppins', sans-serif;
-        }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
 
-        /* Botão SIM - Tons de Rosa/Vermelho Romântico */
-        #sim {
-            background: linear-gradient(135deg, #ff4d6d, #ff758f);
-            color: #fff;
-            /* Sombras que dão ideia de volume (3D) */
-            box-shadow: 0 6px 0 #b7094c, 0 10px 20px rgba(0, 0, 0, 0.5);
-        }
+    .dot.online { background: var(--ok); }
+    .dot.offline { background: var(--fail); }
 
-        #sim:hover {
-            background: linear-gradient(135deg, #ff758f, #ff8fa3);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 0 #b7094c, 0 12px 24px rgba(0, 0, 0, 0.6);
-        }
+    .config-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+    }
 
-        /* Efeito de clique físico (afundar) */
-        #sim:active {
-            transform: translateY(6px);
-            box-shadow: 0 0px 0 #b7094c, 0 4px 10px rgba(0, 0, 0, 0.4);
-        }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
 
-        /* Botão NÃO - Tom sóbrio que vai fugir */
-        #nao {
-            background: linear-gradient(135deg, #4a4e69, #9a8c98);
-            color: #fff;
-            box-shadow: 0 6px 0 #22223b, 0 10px 20px rgba(0, 0, 0, 0.5);
-        }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
 
-        /* Corações flutuantes */
-        .heart {
-            position: absolute;
-            color: #ff4d6d;
-            pointer-events: none;
-            font-size: 20px;
-            filter: drop-shadow(0 0 5px rgba(255,77,109,0.5));
-            animation: floatUp 5s linear forwards;
-            opacity: 0;
-            z-index: 1;
-        }
+    .field input {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.88rem;
+    }
 
-        @keyframes floatUp {
-            0% {
-                transform: translateY(105vh) scale(0) rotate(0deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.7;
-            }
-            90% {
-                opacity: 0.7;
-            }
-            100% {
-                transform: translateY(-10vh) scale(1.5) rotate(360deg);
-                opacity: 0;
-            }
-        }
-    </style>
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: var(--bg-card-alt);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover { border-color: var(--accent); }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0284c7;
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #0369a1; }
+
+    .btn-danger {
+      background: rgba(220, 38, 38, 0.16);
+      border-color: rgba(220, 38, 38, 0.45);
+      color: #fca5a5;
+    }
+
+    .status-banner {
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 18px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .status-banner.normal {
+      background: var(--ok-bg);
+      border-color: rgba(22, 163, 74, 0.45);
+    }
+
+    .status-banner.fault {
+      background: var(--fail-bg);
+      border-color: rgba(220, 38, 38, 0.5);
+    }
+
+    .status-banner.booting,
+    .status-banner.disconnected {
+      background: var(--warn-bg);
+      border-color: rgba(217, 119, 6, 0.45);
+    }
+
+    .status-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .status-value {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .card .k { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
+    .card .v { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .card .sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-head h2 { font-size: 1rem; }
+
+    .log-list {
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+    }
+
+    .log-list li {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .log-list li:last-child { border-bottom: none; }
+    .log-list li strong { color: var(--text-main); }
+  </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1 class="title">Cuzinho hoje? 🌹</h1>
-        <div class="btn-group">
-            <button id="sim" class="btn">Sim, com certeza!</button>
-            <button id="nao" class="btn">Não</button>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>E-MONITOR • REMOTO</h1>
+        <p>Supervisório Trifásico via MQTT over WebSockets (WSS)</p>
+      </div>
+      <div class="badges">
+        <div class="pill">
+          <span id="brokerDot" class="dot"></span>
+          <span id="brokerText">Broker Desconectado</span>
         </div>
-    </div>
+        <div class="pill">
+          <span id="devDot" class="dot"></span>
+          <span id="devText">Dispositivo: --</span>
+        </div>
+      </div>
+    </header>
 
-    <script>
-        const simBtn = document.getElementById('sim');
-        const naoBtn = document.getElementById('nao');
+    <section class="config-box">
+      <div class="config-grid">
+        <div class="field">
+          <label for="wssUrl">Broker WSS URL</label>
+          <input type="text" id="wssUrl" value="wss://broker.emqx.io:8084/mqtt" placeholder="wss://seu-broker:8084/mqtt" />
+        </div>
+        <div class="field">
+          <label for="deviceId">ID do Dispositivo</label>
+          <input type="text" id="deviceId" value="bancada-01" placeholder="Ex: bancada-01" />
+        </div>
+        <div class="field">
+          <label for="mqttUser">Usuário (opcional)</label>
+          <input type="text" id="mqttUser" placeholder="Usuário MQTT" />
+        </div>
+        <div class="field">
+          <label for="mqttPass">Senha (opcional)</label>
+          <input type="password" id="mqttPass" placeholder="Senha MQTT" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="connectMqtt()">Conectar</button>
+          <button class="btn" onclick="disconnectMqtt()">Desconectar</button>
+        </div>
+      </div>
+    </section>
 
-        // Redirecionamento do botão SIM
-        simBtn.addEventListener('click', () => {
-            window.location.href = 'https://www.youtube.com/watch?v=izGwDsrQ1eQ';
-        });
+    <section id="statusBanner" class="status-banner disconnected">
+      <div>
+        <div class="status-label">Estado Atual da Rede / Jumper (GPIO 27)</div>
+        <div id="stateText" class="status-value">AGUARDANDO TELEMETRIA</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="status-label">Última Atualização</div>
+        <div id="lastUpdate" style="font-size:1.05rem; font-weight:700;">--:--:--</div>
+      </div>
+    </section>
 
-        // Função para mover o botão NÃO de forma inteligente na tela toda
-        function desviar() {
-            // Garante que o botão use posição absoluta para voar pela tela livremente
-            naoBtn.style.position = 'absolute';
-            
-            // Define limites para o botão não sumir completamente da barra de rolagem
-            const maxX = window.innerWidth - naoBtn.offsetWidth - 20;
-            const maxY = window.innerHeight - naoBtn.offsetHeight - 20;
+    <section class="grid">
+      <div class="card">
+        <div class="k">Total de Falhas</div>
+        <div id="faultCount" class="v">0</div>
+        <div class="sub">Eventos confirmados (60 ms)</div>
+      </div>
+      <div class="card">
+        <div class="k">Tempo Acumulado em Falha</div>
+        <div id="accFaultTime" class="v">00:00:00.0</div>
+        <div class="sub">Interpolação em tempo real</div>
+      </div>
+      <div class="card">
+        <div class="k">Uptime &amp; IP Local do ESP32</div>
+        <div id="uptime" class="v">00:00:00</div>
+        <div id="ipInfo" class="sub">IP LAN: --</div>
+      </div>
+    </section>
 
-            const randomX = Math.max(10, Math.floor(Math.random() * maxX));
-            const randomY = Math.max(10, Math.floor(Math.random() * maxY));
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Eventos Remotos (MQTT)</h2>
+        <div class="btn-row">
+          <button class="btn" onclick="clearLog()">Limpar Log</button>
+          <button class="btn btn-danger" onclick="sendResetCommand()">Reset Remoto</button>
+        </div>
+      </div>
+      <ul id="eventLog" class="log-list">
+        <li>Configure o broker WSS e clique em <strong>Conectar</strong>.</li>
+      </ul>
+    </section>
+  </div>
 
-            naoBtn.style.left = randomX + 'px';
-            naoBtn.style.top = randomY + 'px';
+  <script>
+    let client = null;
+    let latestData = null;
+    let lastPacketLocalMs = performance.now();
+    let previousState = null;
+
+    function formatDurationMs(ms) {
+      const totalTenths = Math.max(0, Math.floor(ms / 100));
+      const tenths = totalTenths % 10;
+      const totalSec = Math.floor(totalTenths / 10);
+      const hours = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      const secs = totalSec % 60;
+      return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${tenths}`;
+    }
+
+    function formatUptimeSec(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function appendEvent(msg) {
+      const list = document.getElementById('eventLog');
+      if (list.children.length === 1 && list.children[0].textContent.includes('Configure o broker')) {
+        list.innerHTML = '';
+      }
+      const now = new Date().toLocaleTimeString('pt-BR');
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>[${now}]</strong> ${msg}`;
+      list.prepend(li);
+      while (list.children.length > 50) {
+        list.removeChild(list.lastChild);
+      }
+    }
+
+    function clearLog() {
+      document.getElementById('eventLog').innerHTML = '<li>Log limpo.</li>';
+    }
+
+    function setBrokerStatus(online, text) {
+      document.getElementById('brokerDot').className = `dot ${online ? 'online' : 'offline'}`;
+      document.getElementById('brokerText').textContent = text;
+    }
+
+    function setDeviceStatus(online, text) {
+      document.getElementById('devDot').className = `dot ${online ? 'online' : 'offline'}`;
+      document.getElementById('devText').textContent = text;
+    }
+
+    function getTopics() {
+      const devId = document.getElementById('deviceId').value.trim() || 'bancada-01';
+      return {
+        devId,
+        telemetry: `emonitor/${devId}/telemetry`,
+        status: `emonitor/${devId}/status`,
+        cmd: `emonitor/${devId}/cmd`
+      };
+    }
+
+    function saveSettings() {
+      const cfg = {
+        wssUrl: document.getElementById('wssUrl').value.trim(),
+        deviceId: document.getElementById('deviceId').value.trim(),
+        mqttUser: document.getElementById('mqttUser').value,
+        mqttPass: document.getElementById('mqttPass').value
+      };
+      localStorage.setItem('emonitor_mqtt_cfg', JSON.stringify(cfg));
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem('emonitor_mqtt_cfg');
+        if (!raw) return;
+        const cfg = JSON.parse(raw);
+        if (cfg.wssUrl) document.getElementById('wssUrl').value = cfg.wssUrl;
+        if (cfg.deviceId) document.getElementById('deviceId').value = cfg.deviceId;
+        if (cfg.mqttUser) document.getElementById('mqttUser').value = cfg.mqttUser;
+        if (cfg.mqttPass) document.getElementById('mqttPass').value = cfg.mqttPass;
+      } catch (e) {}
+    }
+
+    function connectMqtt() {
+      saveSettings();
+      const url = document.getElementById('wssUrl').value.trim();
+      const username = document.getElementById('mqttUser').value;
+      const password = document.getElementById('mqttPass').value;
+      const topics = getTopics();
+
+      if (!url.startsWith('wss://')) {
+        appendEvent('Aviso: use uma URL segura iniciando com <strong>wss://</strong>.');
+      }
+
+      if (client) {
+        client.end(true);
+        client = null;
+      }
+
+      setBrokerStatus(false, 'Conectando WSS...');
+      appendEvent(`Conectando a <strong>${url}</strong> (${topics.devId})...`);
+
+      const options = {
+        clientId: `emonitor_web_${Math.random().toString(16).slice(2, 10)}`,
+        clean: true,
+        reconnectPeriod: 3000,
+        connectTimeout: 8000
+      };
+      if (username) options.username = username;
+      if (password) options.password = password;
+
+      client = mqtt.connect(url, options);
+
+      client.on('connect', () => {
+        setBrokerStatus(true, 'Broker WSS Online');
+        appendEvent(`Conectado ao broker. Assinando <code>${topics.telemetry}</code> e <code>${topics.status}</code>.`);
+        client.subscribe([topics.telemetry, topics.status], { qos: 0 });
+      });
+
+      client.on('message', (topic, message) => {
+        const payloadStr = message.toString();
+        if (topic === topics.status) {
+          const isOnline = payloadStr.trim().toLowerCase() === 'online';
+          setDeviceStatus(isOnline, `Dispositivo: ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+          appendEvent(`Presença do dispositivo: <strong>${payloadStr}</strong>`);
+          return;
         }
 
-        // Faz o botão fugir tanto ao passar o mouse (computador) quanto ao tocar (celular)
-        naoBtn.addEventListener('mouseover', desviar);
-        naoBtn.addEventListener('click', desviar);
-
-        // Sistema para gerar corações aleatórios no fundo
-        function criarCoracao() {
-            const heart = document.createElement('div');
-            heart.classList.add('heart');
-            
-            // Alterna o estilo do emoji de coração para dar variedade
-            const modelos = ['❤️', '💖', '💘', '💕', '🌹'];
-            heart.innerHTML = modelos[Math.floor(Math.random() * modelos.length)];
-            
-            // Posição horizontal aleatória
-            heart.style.left = Math.random() * 100 + 'vw';
-            
-            // Tamanho aleatório
-            const tamanho = Math.random() * 20 + 10; // entre 10px e 30px
-            heart.style.fontSize = tamanho + 'px';
-            
-            // Velocidade da animação aleatória para parecer natural
-            const duracao = Math.random() * 3 + 4; // entre 4s e 7s
-            heart.style.animationDuration = duracao + 's';
-            
-            document.body.appendChild(heart);
-
-            // Remove o coração após a animação acabar para não travar a página
-            setTimeout(() => {
-                heart.remove();
-            }, duracao * 1000);
+        if (topic === topics.telemetry) {
+          try {
+            latestData = JSON.parse(payloadStr);
+            lastPacketLocalMs = performance.now();
+            setDeviceStatus(true, `Dispositivo: ONLINE (${topics.devId})`);
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
+            renderTelemetry();
+          } catch (err) {
+            appendEvent('Erro ao interpretar JSON de telemetria.');
+          }
         }
+      });
 
-        // Cria um novo coração a cada 350 milissegundos
-        setInterval(criarCoracao, 350);
-    </script>
+      client.on('offline', () => {
+        setBrokerStatus(false, 'Broker Offline');
+      });
+
+      client.on('error', (err) => {
+        setBrokerStatus(false, 'Erro WSS');
+        appendEvent(`Erro MQTT: ${err.message || 'falha de conexão'}`);
+      });
+
+      client.on('close', () => {
+        setBrokerStatus(false, 'Desconectado');
+      });
+    }
+
+    function disconnectMqtt() {
+      if (client) {
+        client.end(true);
+        client = null;
+      }
+      setBrokerStatus(false, 'Desconectado');
+      setDeviceStatus(false, 'Dispositivo: --');
+      appendEvent('Conexão MQTT encerrada pelo usuário.');
+    }
+
+    function sendResetCommand() {
+      if (!client || !client.connected) {
+        appendEvent('Conecte-se ao broker MQTT antes de enviar o comando de reset.');
+        return;
+      }
+      const topics = getTopics();
+      client.publish(topics.cmd, JSON.stringify({ action: 'reset' }), { qos: 1 });
+      appendEvent(`Comando de reset enviado para <code>${topics.cmd}</code>.`);
+    }
+
+    function renderTelemetry() {
+      if (!latestData) return;
+      const elapsedSincePacket = Math.max(0, performance.now() - lastPacketLocalMs);
+      const liveFaultMs = (latestData.accumulated_fault_ms || 0) +
+        (latestData.state === 'FALHA' ? elapsedSincePacket : 0);
+
+      const banner = document.getElementById('statusBanner');
+      const stateText = document.getElementById('stateText');
+      banner.className = 'status-banner';
+
+      if (latestData.state === 'NORMAL') {
+        banner.classList.add('normal');
+        stateText.textContent = 'NORMAL';
+      } else if (latestData.state === 'FALHA') {
+        banner.classList.add('fault');
+        stateText.textContent = 'FALHA';
+      } else {
+        banner.classList.add('booting');
+        stateText.textContent = latestData.state || 'ESTABILIZANDO';
+      }
+
+      if (previousState !== null && previousState !== latestData.state) {
+        appendEvent(`Transição remota: <strong>${previousState}</strong> &rarr; <strong>${latestData.state}</strong>`);
+      }
+      previousState = latestData.state;
+
+      document.getElementById('faultCount').textContent = latestData.fault_count ?? 0;
+      document.getElementById('accFaultTime').textContent = formatDurationMs(liveFaultMs);
+      document.getElementById('uptime').textContent = formatUptimeSec(latestData.uptime_sec || 0);
+      document.getElementById('ipInfo').textContent = `IP LAN: ${latestData.ip || '--'}`;
+    }
+
+    loadSettings();
+    setInterval(renderTelemetry, 100);
+  </script>
 </body>
 </html>
